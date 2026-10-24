@@ -408,7 +408,7 @@ function renderEvolucion() {
 
       Object.keys(d.ofis[ofiName].metas).sort().forEach((metaName, iMeta) => {
         const metaId = `eje-meta-${iDep}-${iOfi}-${iMeta}`;
-        html += cRowEje(`${metaName} - ${ofiName}`, d.ofis[ofiName].metas[metaName], 2, true, metaId, ofiId);
+        html += cRowEje(metaName, d.ofis[ofiName].metas[metaName], 2, true, metaId, ofiId);
 
         Object.keys(d.ofis[ofiName].metas[metaName].gens).sort().forEach((genName) => {
           html += cRowEje(genName || "SIN GEN", d.ofis[ofiName].metas[metaName].gens[genName], 3, false, "", metaId);

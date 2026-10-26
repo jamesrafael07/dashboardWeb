@@ -603,7 +603,7 @@ function renderSeguimiento() {
 
       Object.keys(d.ofis[ofiName].metas).sort().forEach((metaName, iMeta) => {
         const metaId = `meta-${iDep}-${iOfi}-${iMeta}`;
-        html += cRow(`${metaName} - ${ofiName}`, d.ofis[ofiName].metas[metaName], 2, true, metaId, ofiId);
+                html += cRow(metaName, d.ofis[ofiName].metas[metaName], 2, true, metaId, ofiId);
 
         Object.keys(d.ofis[ofiName].metas[metaName].gens).sort().forEach((genName) => {
           html += cRow(genName || "SIN GEN", d.ofis[ofiName].metas[metaName].gens[genName], 3, false, "", metaId);

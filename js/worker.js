@@ -2,7 +2,11 @@ self.onmessage = function (e) {
   try {
     const { rows } = e.data;
     if (!rows || rows.length === 0) throw new Error("Hoja vacía");
-    const resultado = procesarSANIPES(rows);
+    
+    // Detectamos si es el Excel de Saldos buscando "META2"
+    const isSaldos = rows[0] && rows[0].some(c => c && c.toString().toUpperCase().includes("META2"));
+    
+    const resultado = isSaldos ? procesarSaldos(rows) : procesarSANIPES(rows);
     self.postMessage({ ok: true, resultado });
   } catch (err) {
     self.postMessage({ ok: false, error: err.message });
@@ -20,6 +24,77 @@ function num(v) {
   return isFinite(n) ? n : 0;
 }
 
+// ==========================================
+// LÓGICA NUEVA: SOLO PARA SALDOS
+// ==========================================
+function procesarSaldos(rows) {
+  let hIdx = 0;
+  for (let i = 0; i < rows.length; i++) {
+    if (rows[i] && rows[i].some(cell => cell && cell.toString().toUpperCase().includes("META2"))) {
+      hIdx = i; break;
+    }
+  }
+  const headers = (rows[hIdx] || []).map(h => (h || "").toString().trim().toUpperCase());
+  
+  const cMeta2 = headers.findIndex(h => h.includes("META2"));
+  const cClasif = headers.findIndex(h => h.includes("CLASIFICADOR"));
+  const cPia = headers.findIndex(h => h.includes("PIA"));
+  const cPim = headers.findIndex(h => h.includes("PIM"));
+  const cCert = headers.findIndex(h => h.includes("CERT"));
+  const cCAnual = headers.findIndex(h => h.includes("CANUAL"));
+  const cComp = headers.findIndex(h => h.includes("COMP") && !h.includes("CANUAL"));
+  const cDev = headers.findIndex(h => h.includes("DEVENGADO"));
+  const cGiro = headers.findIndex(h => h.includes("GIRO"));
+  const cPago = headers.findIndex(h => h.includes("PAGO"));
+  const cSaldo = headers.findIndex(h => h.includes("SALDO"));
+
+  const filas = [];
+  const porMeta = {};
+  let tPim = 0, tSaldo = 0;
+  let currentMeta = "SIN META";
+
+  for (let i = hIdx + 1; i < rows.length; i++) {
+    const r = rows[i]; if (!r) continue;
+    const colA = norm(r[cMeta2]);
+    const colB = norm(r[cClasif]);
+
+    if (colA.toUpperCase().includes("TOTAL") || colB.toUpperCase().includes("TOTAL")) continue;
+    if (colA) currentMeta = colA;
+    if (!colB) continue;
+
+    // Capturamos TODOS los montos
+    const pia = num(r[cPia]);
+    const pim = num(r[cPim]);
+    const cert = num(r[cCert]);
+    const cAnual = num(r[cCAnual]);
+    const comp = num(r[cComp]);
+    const dev = num(r[cDev]);
+    const giro = num(r[cGiro]);
+    const pago = num(r[cPago]);
+    const saldo = num(r[cSaldo]);
+
+    tPim += pim;
+    tSaldo += saldo;
+    porMeta[currentMeta] = (porMeta[currentMeta] || 0) + saldo;
+
+    filas.push({ 
+      meta: currentMeta, 
+      clasif: colB, 
+      pia, pim, cert, cAnual, comp, dev, giro, pago, saldo 
+    });
+  }
+
+  return {
+    kpis: { tPim, tSaldo, pctSaldo: tPim ? (tSaldo / tPim) * 100 : 0 },
+    porMeta: Object.entries(porMeta).map(([k, v]) => ({ nombre: `Meta ${k}`, valor: v })).sort((a, b) => b.valor - a.valor),
+    filas
+  };
+}
+
+// ==========================================
+// LÓGICA ORIGINAL: SANIPES (Evolución/Seguimiento)
+// (No se tocó absolutamente nada aquí)
+// ==========================================
 function procesarSANIPES(rows) {
   let hIdx = 0;
   for (let i = 0; i < rows.length; i++) {
@@ -32,7 +107,6 @@ function procesarSANIPES(rows) {
   
   const cOfi = headers.findIndex(h => h.includes("OFICINA") && !h.includes("META"));
   const cDep = headers.findIndex(h => h.includes("DEPENDENCIA"));
-  // AQUI BUSCAMOS LA COLUMNA "META + OFICINA"
   const cMetaOficina = headers.findIndex(h => h.includes("META") && h.includes("OFICINA"));
   const cGen = headers.findIndex(h => h === "GEN" || h.includes("GEN"));
   const cEsp = headers.findIndex(h => h.includes("ESP GASTO"));
@@ -63,7 +137,6 @@ function procesarSANIPES(rows) {
   for (let i = hIdx + 1; i < rows.length; i++) {
     const r = rows[i]; if (!r) continue;
 
-    // Limpiamos la OFICINA
     let ofi = norm(r[cOfi]); 
     if (ofi.match(/^[\d\.\-]+/)) {
       ofi = ofi.replace(/^[\d\.\-]+/, "").trim();
@@ -75,21 +148,14 @@ function procesarSANIPES(rows) {
       continue; 
     }
 
-    // Limpiamos la DEPENDENCIA
     let dep = norm(r[cDep]) || "SIN DEPENDENCIA";
     if (dep.match(/^[\d\.\-]+/)) {
       dep = dep.replace(/^[\d\.\-]+/, "").trim();
     }
 
-    // LEEMOS DIRECTAMENTE LA COLUMNA META + OFICINA
-    let meta = norm(r[cMetaOficina]);
-    if (!meta) meta = "SIN META";
-
-    let gen = norm(r[cGen]);
-    if (!gen) gen = "SIN ESPECÍFICA";
-
-    let esp = norm(r[cEsp]);
-    if (!esp) esp = "SIN ESPECÍFICA";
+    let meta = norm(r[cMetaOficina]) || "SIN META";
+    let gen = norm(r[cGen]) || "SIN ESPECÍFICA";
+    let esp = norm(r[cEsp]) || "SIN ESPECÍFICA";
 
     const pim = num(r[cPim]);
     const cert = num(r[cCert]);

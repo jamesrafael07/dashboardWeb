@@ -19,7 +19,7 @@ Chart.defaults.animation.duration = 450;
 Chart.defaults.plugins.datalabels.display = false;
 Chart.defaults.plugins.legend.display = false;
 
-const state = { data: null };
+const state = { data: null, dataSaldos: null };
 const charts = {};
 let listenersReady = false;
 
@@ -154,16 +154,11 @@ function construirLayoutInterno() {
   const divFiltrosEvo = $("filtersEvolucion");
   if (divFiltrosEvo) {
     divFiltrosEvo.innerHTML = `
-      <div class="filter-chip"><i class="fas fa-sitemap"></i>
-        <select id="eDep" class="filter-select"><option value="">Dependencia</option></select></div>
-      <div class="filter-chip"><i class="fas fa-building"></i>
-        <select id="eOfi" class="filter-select"><option value="">Oficina</option></select></div>
-      <div class="filter-chip"><i class="fas fa-layer-group"></i>
-        <select id="eGen" class="filter-select"><option value="">Gen</option></select></div>
-      <div class="filter-chip"><i class="fas fa-tags"></i>
-        <select id="eEsp" class="filter-select"><option value="">ESP Gasto</option></select></div>
-      <div class="filter-chip"><i class="fas fa-crosshairs"></i>
-        <select id="eMeta" class="filter-select"><option value="">Meta</option></select></div>
+      <div class="filter-chip"><i class="fas fa-sitemap"></i><select id="eDep" class="filter-select"><option value="">Dependencia</option></select></div>
+      <div class="filter-chip"><i class="fas fa-building"></i><select id="eOfi" class="filter-select"><option value="">Oficina</option></select></div>
+      <div class="filter-chip"><i class="fas fa-layer-group"></i><select id="eGen" class="filter-select"><option value="">Gen</option></select></div>
+      <div class="filter-chip"><i class="fas fa-tags"></i><select id="eEsp" class="filter-select"><option value="">ESP Gasto</option></select></div>
+      <div class="filter-chip"><i class="fas fa-crosshairs"></i><select id="eMeta" class="filter-select"><option value="">Meta</option></select></div>
       <button id="eClear" class="btn-clear-chips"><i class="fas fa-eraser"></i> Limpiar</button>`;
   }
 
@@ -171,63 +166,40 @@ function construirLayoutInterno() {
     plotCard("eLineas", "Evolución Mensual", "Devengado (Ene - Dic)", 8, "tall"),
     donutCard("eGasto", "Devengado por Tipo de Gasto", "Distribución", 4),
     slotCard("eTabla", "Resumen Mensual", "Mes · Devengado", 12),
-    
-            `<article class="card span-12">
-      <div class="card-head" style="display:flex; flex-direction: column; align-items: flex-start; gap: 12px; margin-bottom:14px;">
-        <div>
-          <h3>TD-PIM-EJE (Evolución por Dependencia)</h3>
-          <p>Haz clic en los signos (+) para desplegar.</p>
-        </div>
-        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; width: 100%;">
-          <select id="eFilterDepEje" style="min-width:180px; border:1px solid #E2E8F0; padding:6px 10px; border-radius:6px; font-size:12px; color:#1E293B; outline:none;"><option value="">Todas las Deps</option></select>
-          <input type="text" id="eSearchDepEje" placeholder="Buscar Dep..." style="width:130px; border:1px solid #E2E8F0; padding:6px 10px; border-radius:6px; font-size:12px; color:#1E293B; outline:none;">
-          
-          <select id="eFilterOfiEje" style="min-width:180px; border:1px solid #E2E8F0; padding:6px 10px; border-radius:6px; font-size:12px; color:#1E293B; outline:none;"><option value="">Todas las Ofis</option></select>
-          <input type="text" id="eSearchOfiEje" placeholder="Buscar Ofi..." style="width:130px; border:1px solid #E2E8F0; padding:6px 10px; border-radius:6px; font-size:12px; color:#1E293B; outline:none;">
-        </div>
-      </div>
-      <div id="eTablaEje" class="mini-table"></div>
-    </article>`
+    `<article class="card span-12"><div class="card-head" style="display:flex; flex-direction: column; align-items: flex-start; gap: 12px; margin-bottom:14px;"><div><h3>TD-PIM-EJE (Evolución por Dependencia)</h3><p>Haz clic en los signos (+) para desplegar.</p></div><div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; width: 100%;"><select id="eFilterDepEje" style="min-width:180px; border:1px solid #E2E8F0; padding:6px 10px; border-radius:6px; font-size:12px; color:#1E293B; outline:none;"><option value="">Todas las Deps</option></select><input type="text" id="eSearchDepEje" placeholder="Buscar Dep..." style="width:130px; border:1px solid #E2E8F0; padding:6px 10px; border-radius:6px; font-size:12px; color:#1E293B; outline:none;"><select id="eFilterOfiEje" style="min-width:180px; border:1px solid #E2E8F0; padding:6px 10px; border-radius:6px; font-size:12px; color:#1E293B; outline:none;"><option value="">Todas las Ofis</option></select><input type="text" id="eSearchOfiEje" placeholder="Buscar Ofi..." style="width:130px; border:1px solid #E2E8F0; padding:6px 10px; border-radius:6px; font-size:12px; color:#1E293B; outline:none;"></div></div><div id="eTablaEje" class="mini-table"></div></article>`
   ].join("");
 
   // SEGUIMIENTO
   const divFiltros = $("filtersSeguimiento");
   if (divFiltros) {
     divFiltros.innerHTML = `
-      <div class="filter-chip"><i class="fas fa-sitemap"></i>
-        <select id="sDep" class="filter-select"><option value="">Dependencia</option></select></div>
-      <div class="filter-chip"><i class="fas fa-building"></i>
-        <select id="sOfi" class="filter-select"><option value="">Oficina</option></select></div>
-      <div class="filter-chip"><i class="fas fa-layer-group"></i>
-        <select id="sGen" class="filter-select"><option value="">Gen</option></select></div>
-      <div class="filter-chip"><i class="fas fa-tags"></i>
-        <select id="sEsp" class="filter-select"><option value="">ESP Gasto</option></select></div>
-      <div class="filter-chip"><i class="fas fa-crosshairs"></i>
-        <select id="sMeta" class="filter-select"><option value="">Meta</option></select></div>
+      <div class="filter-chip"><i class="fas fa-sitemap"></i><select id="sDep" class="filter-select"><option value="">Dependencia</option></select></div>
+      <div class="filter-chip"><i class="fas fa-building"></i><select id="sOfi" class="filter-select"><option value="">Oficina</option></select></div>
+      <div class="filter-chip"><i class="fas fa-layer-group"></i><select id="sGen" class="filter-select"><option value="">Gen</option></select></div>
+      <div class="filter-chip"><i class="fas fa-tags"></i><select id="sEsp" class="filter-select"><option value="">ESP Gasto</option></select></div>
+      <div class="filter-chip"><i class="fas fa-crosshairs"></i><select id="sMeta" class="filter-select"><option value="">Meta</option></select></div>
       <button id="sClear" class="btn-clear-chips"><i class="fas fa-eraser"></i> Limpiar</button>`;
   }
 
   $("gridSeguimiento").innerHTML = [
     plotCard("sBarras", "Avance por Dependencia", "PIM vs Devengado", 8, "tall"),
     donutCard("sDona", "Distribución del Saldo", "PIM - Certificado", 4),
-    
-        `<article class="card span-12">
-      <div class="card-head" style="display:flex; flex-direction: column; align-items: flex-start; gap: 12px; margin-bottom:14px;">
-        <div>
-          <h3>Seguimiento Detallado (TD-PIM)</h3>
-          <p>Haz clic en los signos (+) para desplegar.</p>
-        </div>
-        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; width: 100%;">
-          <select id="sFilterDepSeg" style="min-width:180px; border:1px solid #E2E8F0; padding:6px 10px; border-radius:6px; font-size:12px; color:#1E293B; outline:none;"><option value="">Todas las Deps</option></select>
-          <input type="text" id="sSearchDepSeg" placeholder="Buscar Dep..." style="width:130px; border:1px solid #E2E8F0; padding:6px 10px; border-radius:6px; font-size:12px; color:#1E293B; outline:none;">
-          
-          <select id="sFilterOfiSeg" style="min-width:180px; border:1px solid #E2E8F0; padding:6px 10px; border-radius:6px; font-size:12px; color:#1E293B; outline:none;"><option value="">Todas las Ofis</option></select>
-          <input type="text" id="sSearchOfiSeg" placeholder="Buscar Ofi..." style="width:130px; border:1px solid #E2E8F0; padding:6px 10px; border-radius:6px; font-size:12px; color:#1E293B; outline:none;">
-        </div>
-      </div>
-      <div id="sTabla" class="mini-table"></div>
-    </article>`
+    `<article class="card span-12"><div class="card-head" style="display:flex; flex-direction: column; align-items: flex-start; gap: 12px; margin-bottom:14px;"><div><h3>Seguimiento Detallado (TD-PIM)</h3><p>Haz clic en los signos (+) para desplegar.</p></div><div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; width: 100%;"><select id="sFilterDepSeg" style="min-width:180px; border:1px solid #E2E8F0; padding:6px 10px; border-radius:6px; font-size:12px; color:#1E293B; outline:none;"><option value="">Todas las Deps</option></select><input type="text" id="sSearchDepSeg" placeholder="Buscar Dep..." style="width:130px; border:1px solid #E2E8F0; padding:6px 10px; border-radius:6px; font-size:12px; color:#1E293B; outline:none;"><select id="sFilterOfiSeg" style="min-width:180px; border:1px solid #E2E8F0; padding:6px 10px; border-radius:6px; font-size:12px; color:#1E293B; outline:none;"><option value="">Todas las Ofis</option></select><input type="text" id="sSearchOfiSeg" placeholder="Buscar Ofi..." style="width:130px; border:1px solid #E2E8F0; padding:6px 10px; border-radius:6px; font-size:12px; color:#1E293B; outline:none;"></div></div><div id="sTabla" class="mini-table"></div></article>`
   ].join("");
+  
+  // SALDOS
+  const divFiltrosSaldos = $("filtersSaldos");
+  if (divFiltrosSaldos) {
+    divFiltrosSaldos.innerHTML = `
+      <div class="filter-chip"><i class="fas fa-crosshairs"></i>
+        <select id="salFiltroMeta" class="filter-select"><option value="">Todas las Metas</option></select></div>
+      <button id="salClear" class="btn-clear-chips"><i class="fas fa-eraser"></i> Limpiar</button>`;
+  }
+
+  $("gridSaldos").innerHTML = [
+    plotCard("salMeta", "Saldo por Meta", "Distribución por META2", 12, "tall")
+  ].join("");
+  
 }
 
 function llenarSegmentadores() {
@@ -323,7 +295,6 @@ function renderEvolucion() {
     filasTabla
   );
 
-  // ---- LÓGICA TD-PIM-EJE (TABLA PLANA IGUAL QUE SEGUIMIENTO) ----
   const searchDepEje = $("eSearchDepEje") ? $("eSearchDepEje").value.toLowerCase() : "";
   const filterDepEje = $("eFilterDepEje") ? $("eFilterDepEje").value : "";
   const searchOfiEje = $("eSearchOfiEje") ? $("eSearchOfiEje").value.toLowerCase() : "";
@@ -440,12 +411,10 @@ function renderEvolucion() {
   if ($("eTablaEje")) {
     $("eTablaEje").innerHTML = html;
 
-    // Ocultar todos los hijos al inicio
     document.querySelectorAll('#eTablaEje tr[data-parent]').forEach(row => {
       row.style.display = 'none';
     });
 
-    // Lógica para el acordeón
     document.querySelectorAll('#eTablaEje .row-parent').forEach(row => {
       row.addEventListener('click', () => {
         const rowId = row.dataset.rowId;
@@ -455,7 +424,6 @@ function renderEvolucion() {
         
         children.forEach(c => {
           c.style.display = isHidden ? 'table-row' : 'none';
-          // Si estamos cerrando el padre, también ocultamos a sus hijos internos
           if (!isHidden) {
             const cRowId = c.dataset.rowId;
             if (cRowId) {
@@ -629,12 +597,10 @@ function renderSeguimiento() {
   html += `</tbody></table></div>`;
   $("sTabla").innerHTML = html;
 
-  // Ocultar todos los hijos al inicio
   document.querySelectorAll('#sTabla tr[data-parent]').forEach(row => {
     row.style.display = 'none';
   });
 
-  // Lógica para el acordeón
   document.querySelectorAll('#sTabla .row-parent').forEach(row => {
     row.addEventListener('click', () => {
       const rowId = row.dataset.rowId;
@@ -644,7 +610,6 @@ function renderSeguimiento() {
       
       children.forEach(c => {
         c.style.display = isHidden ? 'table-row' : 'none';
-        // Si estamos cerrando el padre, también ocultamos a sus hijos internos
         if (!isHidden) {
           const cRowId = c.dataset.rowId;
           if (cRowId) {
@@ -661,12 +626,148 @@ function renderSeguimiento() {
   });
 }
 
+function renderSaldos() {
+  if (!state.dataSaldos) { $("kpiSaldos").innerHTML = ""; $("gridSaldos").innerHTML = vacioMensaje(12); return; }
+  const d = state.dataSaldos;
+  
+  // 1. Llenar el segmentador (del 1 al final)
+  const selMeta = $("salFiltroMeta");
+  if (selMeta && selMeta.options.length === 1) {
+    const metasUnicas = [...new Set(d.filas.map(f => f.meta))];
+    metasUnicas.sort((a, b) => parseInt(a) - parseInt(b)).forEach(m => {
+      const o = document.createElement("option"); o.value = m; o.textContent = `Meta ${m}`; selMeta.appendChild(o);
+    });
+  }
+
+  const filtroMeta = selMeta ? selMeta.value : "";
+  
+  // 2. Filtrar filas
+  const filasFiltradas = d.filas.filter(f => {
+    if (filtroMeta && f.meta !== filtroMeta) return false;
+    return true;
+  });
+
+  // 3. Calcular KPIs
+  let tPim = 0, tSaldo = 0;
+  filasFiltradas.forEach(f => { tPim += f.pim; tSaldo += f.saldo; });
+  const pctSaldo = tPim ? (tSaldo / tPim) * 100 : 0;
+
+  $("kpiSaldos").innerHTML = [
+    heroCard({ title: "Total PIM", value: "S/ " + fmt(tPim), unit: "", note: "Presupuesto Total", badge: "100%" }),
+    kpiCard({ icon: "fa-wallet", tone: "amber", title: "Total Saldo", value: "S/ " + fmt(tSaldo), unit: "", pct: pctSaldo, barLabel: "Saldo por Ejecutar", foot: "PIM - Certificado" }),
+    kpiCard({ icon: "fa-chart-pie", tone: "green", title: "% Saldo", value: fmt(pctSaldo, 2) + "%", unit: "", pct: pctSaldo, barLabel: "Porcentaje", foot: "Restante" }),
+  ].join("");
+
+  // 4. Gráfico de barras (Top 10 mayor a menor saldo)
+  let metMap = {};
+  filasFiltradas.forEach(f => { metMap[f.meta] = (metMap[f.meta] || 0) + f.saldo; });
+  const metasOrdenadas = Object.entries(metMap).sort((a, b) => b[1] - a[1]).slice(0, 10);
+
+  renderGrouped("salMeta", metasOrdenadas.map(x => `Meta ${x[0]}`), [
+    { label: "Saldo (S/)", color: C.gold, data: metasOrdenadas.map(x => x[1]) }
+  ]);
+
+  // 5. Tabla con Acordeón (Agrupada por Meta)
+  const agrupado = {};
+  filasFiltradas.forEach(f => {
+    if (!agrupado[f.meta]) agrupado[f.meta] = { pim: 0, saldo: 0, clasifs: [] };
+    agrupado[f.meta].pim += f.pim;
+    agrupado[f.meta].saldo += f.saldo;
+    agrupado[f.meta].clasifs.push(f);
+  });
+
+  const cRow = (label, data, isParent=false, levelId="") => {
+    return `
+      <tr class="${isParent ? 'row-parent' : 'child ' + levelId}" ${isParent ? `data-target="${levelId}"` : ''} style="${isParent ? 'cursor:pointer; font-weight:600; background:#F8FAFC;' : 'color:#64748B;'}">
+        <td style="padding-left: ${isParent ? '10px' : '30px'}; white-space: normal; word-break: break-word; min-width: 300px;">
+          ${isParent ? '<i class="fas fa-plus-square" style="color:#0F172A; width:15px; margin-right:5px;"></i>' : '<i style="width:15px; margin-right:5px; display:inline-block;"></i>'}
+          ${label}
+        </td>
+        <td class="num">${data.pia !== undefined ? "S/ " + fmt(data.pia) : ""}</td>
+        <td class="num">S/ ${fmt(data.pim)}</td>
+        <td class="num">${data.cert !== undefined ? "S/ " + fmt(data.cert) : ""}</td>
+        <td class="num">${data.cAnual !== undefined ? "S/ " + fmt(data.cAnual) : ""}</td>
+        <td class="num">${data.comp !== undefined ? "S/ " + fmt(data.comp) : ""}</td>
+        <td class="num">${data.dev !== undefined ? "S/ " + fmt(data.dev) : ""}</td>
+        <td class="num">${data.giro !== undefined ? "S/ " + fmt(data.giro) : ""}</td>
+        <td class="num">${data.pago !== undefined ? "S/ " + fmt(data.pago) : ""}</td>
+        <td class="num">S/ ${fmt(data.saldo)}</td>
+      </tr>`;
+  };
+
+  let html = `<div class="tbl-wrap"><table class="tbl"><thead><tr>
+    <th>META2 / Clasificador</th><th class="num">PIA</th><th class="num">PIM</th><th class="num">Cert</th>
+    <th class="num">Comp. Anual</th><th class="num">Compromiso</th><th class="num">Devengado</th>
+    <th class="num">Girado</th><th class="num">Pagado</th><th class="num">Saldo</th>
+  </tr></thead><tbody>`;
+
+  let tPia = 0, tCert = 0, tCAnual = 0, tComp = 0, tDev = 0, tGiro = 0, tPago = 0;
+
+  Object.keys(agrupado).sort((a,b) => parseInt(a) - parseInt(b)).forEach((metaName, i) => {
+    const m = agrupado[metaName];
+    const metaId = `meta-${i}`;
+    
+    // Sumar totales para la fila padre
+    m.pia = 0; m.cert = 0; m.cAnual = 0; m.comp = 0; m.dev = 0; m.giro = 0; m.pago = 0;
+    m.clasifs.forEach(c => {
+      m.pia += c.pia; m.cert += c.cert; m.cAnual += c.cAnual; m.comp += c.comp; m.dev += c.dev; m.giro += c.giro; m.pago += c.pago;
+    });
+    tPim += m.pim; tSaldo += m.saldo;
+    tPia += m.pia; tCert += m.cert; tCAnual += m.cAnual; tComp += m.comp; tDev += m.dev; tGiro += m.giro; tPago += m.pago;
+
+    html += cRow(`Meta ${metaName}`, m, true, metaId);
+
+    m.clasifs.forEach((c) => {
+      html += cRow(c.clasif, c, false, metaId);
+    });
+  });
+
+  const pTotal = tPim ? fmt((tSaldo/tPim)*100, 1) + "%" : "-";
+  html += `
+    <tr style="font-weight:700; background:#F1F5F9; border-top:2px solid #CBD5E1;">
+      <td style="padding-left: 10px;">Total general</td>
+      <td class="num">S/ ${fmt(tPia)}</td>
+      <td class="num">S/ ${fmt(tPim)}</td>
+      <td class="num">S/ ${fmt(tCert)}</td>
+      <td class="num">S/ ${fmt(tCAnual)}</td>
+      <td class="num">S/ ${fmt(tComp)}</td>
+      <td class="num">S/ ${fmt(tDev)}</td>
+      <td class="num">S/ ${fmt(tGiro)}</td>
+      <td class="num">S/ ${fmt(tPago)}</td>
+      <td class="num">S/ ${fmt(tSaldo)}</td>
+    </tr>
+  `;
+  html += `</tbody></table></div>`;
+  $("tablaSaldos").innerHTML = html;
+
+  // 6. Lógica del acordeón
+  document.querySelectorAll('#tablaSaldos tr[class*="child"]').forEach(row => {
+    row.style.display = 'none';
+  });
+
+  document.querySelectorAll('#tablaSaldos .row-parent').forEach(row => {
+    row.addEventListener('click', () => {
+      const target = row.dataset.target;
+      const children = document.querySelectorAll(`#tablaSaldos .child.${target}`);
+      const icon = row.querySelector('i');
+      const isHidden = children.length > 0 && children[0].style.display === 'none';
+      
+      children.forEach(c => c.style.display = isHidden ? 'table-row' : 'none');
+      if (icon) {
+        icon.classList.toggle('fa-plus-square', !isHidden);
+        icon.classList.toggle('fa-minus-square', isHidden);
+      }
+    });
+  });
+}
+
 function cambiarSeccion(seccion) {
   document.querySelectorAll("#dashTabs .tab").forEach(t => t.classList.toggle("active", t.dataset.seccion === seccion));
-  ["evolucion", "seguimiento"].forEach(s => { const el = document.getElementById(s); if (el) el.hidden = s !== seccion; });
+  ["evolucion", "seguimiento", "saldos"].forEach(s => { const el = document.getElementById(s); if (el) el.hidden = s !== seccion; });
   
   if (seccion === "evolucion") renderEvolucion();
   if (seccion === "seguimiento") renderSeguimiento();
+  if (seccion === "saldos") renderSaldos();
   
   requestAnimationFrame(() => Object.values(charts).forEach(c => c.resize()));
 }
@@ -740,11 +841,20 @@ function engancharEventos() {
       document.querySelectorAll(".js-refresh").forEach((x) => { x.disabled = false; x.classList.remove("is-loading"); });
     })
   );
+    // Eventos para el filtro de Saldos
+  if ($("salFiltroMeta")) $("salFiltroMeta").addEventListener("change", renderSaldos);
+  if ($("salClear")) $("salClear").addEventListener("click", () => {
+    if ($("salFiltroMeta")) $("salFiltroMeta").value = "";
+    renderSaldos();
+  });
 }
 
 async function cargarTodo() {
   const data = await cargarHoja("SANIPES_DATA").catch(() => null);
   state.data = data;
+
+  const dataSaldos = await cargarHoja("SANIPES_SALDOS").catch(() => null);
+  state.dataSaldos = dataSaldos;
 
   const count = data ? 1 : 0;
   $("stRegistros").textContent = `${count} / 1`;

@@ -14,9 +14,8 @@ const progressPct = document.getElementById('progressPct');
 const tipoDetected = document.getElementById('tipoDetected');
 const tipoNombre = document.getElementById('tipoNombre');
 
-const SHEET_NAME = "SANIPES_DATA";
-
 let resultadoPendiente = null;
+let sheetNameSelected = "SANIPES_DATA"; // Por defecto
 
 function setProgreso(pct, label) {
   progressBox.style.display = 'block';
@@ -61,13 +60,23 @@ fileInput.addEventListener('change', async function (e) {
     setProgreso(15, 'Abriendo Excel…');
     const workbook = XLSX.read(data, { type: 'array', cellDates: false, cellNF: false, cellStyles: false });
 
-    const hoja = workbook.SheetNames.find(n => n.toUpperCase().includes("PIM-SJ-J"));
+    // Detecta automáticamente qué Excel es
+    let hoja = workbook.SheetNames.find(n => n.toUpperCase().includes("PIM-SJ-J"));
+    let isSaldos = false;
+
+    if (!hoja) {
+      hoja = workbook.SheetNames.find(n => n.toUpperCase().includes("HOJA1"));
+      if (hoja) isSaldos = true;
+    }
+    
     if (!hoja) {
       setProgreso(100, 'Error');
-      mostrarMensaje('❌ El Excel debe tener la hoja PIM-SJ-J.', 'error');
+      mostrarMensaje('❌ El Excel debe tener la hoja PIM-SJ-J o Hoja1.', 'error');
       ocultarProgreso();
       return;
     }
+
+    sheetNameSelected = isSaldos ? "SANIPES_SALDOS" : "SANIPES_DATA";
 
     tipoNombre.textContent = hoja;
     tipoDetected.style.display = 'flex';
@@ -82,7 +91,7 @@ fileInput.addEventListener('change', async function (e) {
     resultadoPendiente = { payload: agregado };
 
     const li = document.createElement('li');
-    li.innerHTML = `<i class="fas fa-check-circle"></i> ${hoja} procesada`;
+    li.innerHTML = `<i class="fas fa-check-circle"></i> ${hoja} procesada (destino: ${sheetNameSelected})`;
     sheetList.appendChild(li);
 
     setProgreso(100, `Procesado`);
@@ -105,13 +114,12 @@ btnSubir.addEventListener('click', async function () {
   try {
     const { payload } = resultadoPendiente;
     
-    await supabaseClient.from('dashboard_data').delete().eq('sheet_name', SHEET_NAME);
-
-    const { error } = await supabaseClient.from('dashboard_data').insert([{ sheet_name: SHEET_NAME, row_index: 0, data: payload }]);
+    await supabaseClient.from('dashboard_data').delete().eq('sheet_name', sheetNameSelected);
+    const { error } = await supabaseClient.from('dashboard_data').insert([{ sheet_name: sheetNameSelected, row_index: 0, data: payload }]);
     if (error) throw error;
 
     setProgreso(100, `Subido`);
-    mostrarMensaje(`✅ Datos subidos correctamente.`, 'ok');
+    mostrarMensaje(`✅ Datos subidos correctamente a ${sheetNameSelected}.`, 'ok');
     resultadoPendiente = null;
     sheetStatus.style.display = 'none';
     fileInput.value = '';

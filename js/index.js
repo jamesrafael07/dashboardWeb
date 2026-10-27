@@ -60,23 +60,18 @@ fileInput.addEventListener('change', async function (e) {
     setProgreso(15, 'Abriendo Excel…');
     const workbook = XLSX.read(data, { type: 'array', cellDates: false, cellNF: false, cellStyles: false });
 
-    // Detecta automáticamente qué Excel es
-    let hoja = workbook.SheetNames.find(n => n.toUpperCase().includes("PIM-SJ-J"));
-    let isSaldos = false;
+    // Toma la primera hoja del Excel sin importar el nombre
+    let hoja = workbook.SheetNames[0];
+    let isSaldos = true;
 
     if (!hoja) {
-      hoja = workbook.SheetNames.find(n => n.toUpperCase().includes("HOJA1"));
-      if (hoja) isSaldos = true;
-    }
-    
-    if (!hoja) {
       setProgreso(100, 'Error');
-      mostrarMensaje('❌ El Excel debe tener la hoja PIM-SJ-J o Hoja1.', 'error');
+      mostrarMensaje('❌ El Excel no tiene hojas válidas.', 'error');
       ocultarProgreso();
       return;
     }
 
-    sheetNameSelected = isSaldos ? "SANIPES_SALDOS" : "SANIPES_DATA";
+    sheetNameSelected = "SANIPES_SALDOS";
 
     tipoNombre.textContent = hoja;
     tipoDetected.style.display = 'flex';

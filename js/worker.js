@@ -3,8 +3,13 @@ self.onmessage = function (e) {
     const { rows } = e.data;
     if (!rows || rows.length === 0) throw new Error("Hoja vacía");
     
-    // Detectamos si es el Excel de Saldos buscando "META2"
-    const isSaldos = rows[0] && rows[0].some(c => c && c.toString().toUpperCase().includes("META2"));
+     // Detectamos si es el Excel de Saldos buscando "META2" en las primeras 10 filas
+    let isSaldos = false;
+    for (let i = 0; i < Math.min(10, rows.length); i++) {
+      if (rows[i] && rows[i].some(c => c && c.toString().toUpperCase().includes("META2"))) {
+        isSaldos = true; break;
+      }
+    }
     
     const resultado = isSaldos ? procesarSaldos(rows) : procesarSANIPES(rows);
     self.postMessage({ ok: true, resultado });
@@ -28,16 +33,28 @@ function num(v) {
 // LÓGICA NUEVA: SOLO PARA SALDOS
 // ==========================================
 function procesarSaldos(rows) {
+  // Busca la cabecera dinámicamente (donde diga META2)
   let hIdx = 0;
   for (let i = 0; i < rows.length; i++) {
     if (rows[i] && rows[i].some(cell => cell && cell.toString().toUpperCase().includes("META2"))) {
       hIdx = i; break;
     }
   }
+  
   const headers = (rows[hIdx] || []).map(h => (h || "").toString().trim().toUpperCase());
   
-  const cMeta2 = headers.findIndex(h => h.includes("META2"));
-  const cClasif = headers.findIndex(h => h.includes("CLASIFICADOR"));
+  const cMeta2 = headers.findIndex(h => h.includes("META2"));  
+  const cClasif = headers.findIndex(h => h.includes("CLAS GASTO DET"));
+    // Diccionario de Metas a Oficinas (basado en tu imagen)
+  const diccOficinas = {
+    "31": "OA - OFICINA DE ADMINISTRACION",
+    "32": "OA - UA - UNIDAD DE ABASTECIMIENTO",
+    "35": "OA - UACGD - UNIDAD E ATENCION AL CIUDADANO Y GESTION DOCUMENTAL",
+    "40-41": "OA - UEI - UNIDAD EJECUTORA DE INVERSIONES",
+    "26": "OA - UFCyT - UNIDAD DE FINANZAS, CONTABILIDAD Y TESORERIA",
+    "28": "OA - URH - UNIDAD DE RECURSOS HUMANOS",
+    "30": "OA - URH - UNIDAD DE RECURSOS HUMANOS"
+  };
   const cPia = headers.findIndex(h => h.includes("PIA"));
   const cPim = headers.findIndex(h => h.includes("PIM"));
   const cCert = headers.findIndex(h => h.includes("CERT"));
@@ -58,11 +75,16 @@ function procesarSaldos(rows) {
     const colA = norm(r[cMeta2]);
     const colB = norm(r[cClasif]);
 
-    if (colA.toUpperCase().includes("TOTAL") || colB.toUpperCase().includes("TOTAL")) continue;
-    if (colA) currentMeta = colA;
-    if (!colB) continue;
+if (!colB) continue;
+    if (colA.toUpperCase().startsWith("TOTAL") || colB.toUpperCase().startsWith("TOTAL")) continue;
 
-    // Capturamos TODOS los montos
+if (colA) {
+  // Si el número está en el diccionario, usa el nombre de la oficina. Si no, deja el número.
+  currentMeta = diccOficinas[colA] || colA;
+}if (colA) currentMeta = colA;
+if (!colB) continue;
+if (!currentMeta) continue; // Ignora solo si no hay meta actual
+
     const pia = num(r[cPia]);
     const pim = num(r[cPim]);
     const cert = num(r[cCert]);
@@ -76,10 +98,29 @@ function procesarSaldos(rows) {
     tPim += pim;
     tSaldo += saldo;
     porMeta[currentMeta] = (porMeta[currentMeta] || 0) + saldo;
+    
+    // Extraemos el código de GEN GASTO
+    let genGasto = "SIN CATEGORÍA";
+    const matchGen = colB.match(/^(\d+\.\d+)/);
+    if (matchGen) {
+      genGasto = matchGen[1];
+      // Diccionario para cambiar el número por el nombre
+      const nombresGen = {
+        "2.1": "2.1 - PERSONAL Y OBLIGACIONES SOCIALES",
+        "2.3": "2.3 - BIENES Y SERVICIOS",
+        "2.4": "2.4 - DONACIONES Y TRANSFERENCIAS",
+        "2.5": "2.5 - OTROS GASTOS",
+        "2.6": "2.6 - ADQUISICION DE ACTIVOS NO FINANCIEROS"
+      };
+      if (nombresGen[genGasto]) {
+        genGasto = nombresGen[genGasto];
+      }
+    }
 
     filas.push({ 
       meta: currentMeta, 
       clasif: colB, 
+      genGasto, // <-- Agrega esto
       pia, pim, cert, cAnual, comp, dev, giro, pago, saldo 
     });
   }

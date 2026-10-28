@@ -79,31 +79,26 @@
           <section class="charts-exec" id="gridSeguimiento"></section>
         </section>
 
-        <!-- NUEVA SECCIÓN: SALDOS -->
+        <!-- SECCIÓN SALDOS (CORREGIDA) -->
         <section id="saldos" class="dashboard-section" hidden>
-  <div class="page-head">
-    <div><h1>Análisis de Saldos</h1><p>PIM vs Saldo · Distribución por Meta</p></div>
-  </div>
+          <div class="page-head">
+            <div><h1>Análisis de Saldos</h1><p>PIM vs Saldo · Distribución por Meta</p></div>
+          </div>
+          
+          <section class="filters-row" id="filtersSaldos">
+  <div class="filter-chip"><i class="fas fa-crosshairs"></i>
+    <select id="salFiltroMeta" class="filter-select"><option value="">Todas las Metas</option></select></div>
+  <div class="filter-chip"><i class="fas fa-layer-group"></i>
+    <select id="salFiltroGen" class="filter-select"><option value="">Todos los GEN</option></select></div>
   
-  <!-- Contenedor para los filtros -->
-  <section class="filters-row" id="filtersSaldos"></section>
-
-  <!-- Contenedor para las tarjetas -->
-  <section class="kpi-row" id="kpiSaldos"></section>
-
-  <!-- Contenedor para el gráfico -->
-  <section class="charts-exec" id="gridSaldos"></section>
-
-  <!-- Contenedor para la tabla -->
-  <section class="charts-exec" style="margin-top: 16px;">
-    <article class="card span-12">
-      <div class="card-head"><h3>Detalle de Saldos</h3><p>PIM y Saldo por Clasificador</p></div>
-      <div id="tablaSaldos" class="mini-table"></div>
-    </article>
-  </section>
+  <button id="btnFiltrarSaldos" class="btn-clear-chips" style="margin-left: 0;"><i class="fas fa-filter"></i> Filtrar Metas Principales</button>
+  
+  <button id="salClear" class="btn-clear-chips"><i class="fas fa-eraser"></i> Limpiar</button>
 </section>
           <section class="kpi-row" id="kpiSaldos"></section>
-          <section class="charts-exec" id="gridSaldos">
+          <section class="charts-exec" id="gridSaldos"></section>
+
+          <section class="charts-exec" style="margin-top: 16px;">
             <article class="card span-12">
               <div class="card-head"><h3>Detalle de Saldos</h3><p>PIM y Saldo por Clasificador</p></div>
               <div id="tablaSaldos" class="mini-table"></div>

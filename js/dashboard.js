@@ -186,8 +186,9 @@ function construirLayoutInterno() {
     donutCard("sDona", "Distribución del Saldo", "PIM - Certificado", 4),
     `<article class="card span-12"><div class="card-head" style="display:flex; flex-direction: column; align-items: flex-start; gap: 12px; margin-bottom:14px;"><div><h3>Seguimiento Detallado (TD-PIM)</h3><p>Haz clic en los signos (+) para desplegar.</p></div><div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; width: 100%;"><select id="sFilterDepSeg" style="min-width:180px; border:1px solid #E2E8F0; padding:6px 10px; border-radius:6px; font-size:12px; color:#1E293B; outline:none;"><option value="">Todas las Deps</option></select><input type="text" id="sSearchDepSeg" placeholder="Buscar Dep..." style="width:130px; border:1px solid #E2E8F0; padding:6px 10px; border-radius:6px; font-size:12px; color:#1E293B; outline:none;"><select id="sFilterOfiSeg" style="min-width:180px; border:1px solid #E2E8F0; padding:6px 10px; border-radius:6px; font-size:12px; color:#1E293B; outline:none;"><option value="">Todas las Ofis</option></select><input type="text" id="sSearchOfiSeg" placeholder="Buscar Ofi..." style="width:130px; border:1px solid #E2E8F0; padding:6px 10px; border-radius:6px; font-size:12px; color:#1E293B; outline:none;"></div></div><div id="sTabla" class="mini-table"></div></article>`
   ].join("");
-  
-    // SALDOS
+
+  // SALDOS
+  // SALDOS
   const divFiltrosSaldos = $("filtersSaldos");
   if (divFiltrosSaldos) {
     divFiltrosSaldos.innerHTML = `
@@ -195,13 +196,15 @@ function construirLayoutInterno() {
         <select id="salFiltroMeta" class="filter-select"><option value="">Todas las Metas</option></select></div>
       <div class="filter-chip"><i class="fas fa-layer-group"></i>
         <select id="salFiltroGen" class="filter-select"><option value="">Todos los GEN</option></select></div>
+      
+      <button id="btnFiltrarSaldos" class="btn-clear-chips" style="margin-left: 0;"><i class="fas fa-filter"></i> Filtrar Metas Principales</button>
+      
       <button id="salClear" class="btn-clear-chips"><i class="fas fa-eraser"></i> Limpiar</button>`;
   }
 
   $("gridSaldos").innerHTML = [
-    plotCard("salMeta", "Saldo por Meta", "Distribución por META2", 12, "tall")
+    `<article class="card span-12"><div class="card-head"><h3>Saldo por Meta</h3><p>Distribución por META2</p></div><div id="salMeta" class="plot" style="height: 400px;"></div></article>`
   ].join("");
-  
 }
 
 function llenarSegmentadores() {
@@ -632,57 +635,126 @@ function renderSaldos() {
   if (!state.dataSaldos) { $("kpiSaldos").innerHTML = ""; $("gridSaldos").innerHTML = vacioMensaje(12); return; }
   const d = state.dataSaldos;
   
-  // 1. Llenar el segmentador (del 1 al final)
   const selMeta = $("salFiltroMeta");
-  if (selMeta && selMeta.options.length === 1) {
-    const metasUnicas = [...new Set(d.filas.map(f => f.meta))];
-    metasUnicas.sort((a, b) => parseInt(a) - parseInt(b)).forEach(m => {
+  const selGen = $("salFiltroGen");
+  
+  const filtroMeta = selMeta ? selMeta.value : "";
+  const filtroGen = selGen ? selGen.value : "";
+
+  // 1. Llenar el segmentador de Meta (solo las disponibles según el GEN elegido)
+  if (selMeta) {
+    const metasDisponibles = [...new Set(d.filas.filter(f => !filtroGen || f.genGasto === filtroGen).map(f => f.meta))];
+    metasDisponibles.sort((a, b) => parseInt(a) - parseInt(b));
+    
+    const currentMeta = selMeta.value;
+    selMeta.innerHTML = `<option value="">Todas las Metas</option>`;
+    metasDisponibles.forEach(m => {
       const o = document.createElement("option"); o.value = m; o.textContent = `Meta ${m}`; selMeta.appendChild(o);
     });
+    if (metasDisponibles.includes(currentMeta)) selMeta.value = currentMeta;
   }
 
-    const selGen = $("salFiltroGen");
-  if (selGen && selGen.options.length === 1) {
-    const gensUnicos = [...new Set(d.filas.map(f => f.genGasto))].filter(Boolean);
-    gensUnicos.sort().forEach(g => {
+  // 2. Llenar el segmentador de GEN (solo los disponibles según la Meta elegida)
+  if (selGen) {
+    const gensDisponibles = [...new Set(d.filas.filter(f => !filtroMeta || f.meta === filtroMeta).map(f => f.genGasto))].filter(Boolean);
+    gensDisponibles.sort();
+    
+    const currentGen = selGen.value;
+    selGen.innerHTML = `<option value="">Todos los GEN</option>`;
+    gensDisponibles.forEach(g => {
       const o = document.createElement("option"); o.value = g; o.textContent = g; selGen.appendChild(o);
     });
+    if (gensDisponibles.includes(currentGen)) selGen.value = currentGen;
   }
 
-  const filtroMeta = selMeta ? selMeta.value : "";
-  const filtroGen = selGen ? selGen.value : ""; // <-- Agrega esto
-  
-  // Filtrar filas
+  // 3. Filtrar las filas finales para mostrar en los gráficos y tabla
   const filasFiltradas = d.filas.filter(f => {
     if (filtroMeta && f.meta !== filtroMeta) return false;
-    if (filtroGen && f.genGasto !== filtroGen) return false; // <-- Agrega esto
+    if (filtroGen && f.genGasto !== filtroGen) return false;
     return true;
   });
 
-  // 3. Calcular KPIs
-  // 3. Calcular KPIs usando las mismas variables que la tabla
-    // 3. Calcular KPIs sumando las mismas filas que la tabla
   let tPim = 0, tSaldo = 0;
   filasFiltradas.forEach(f => { tPim += f.pim; tSaldo += f.saldo; });
   const pctSaldo = tPim ? (tSaldo / tPim) * 100 : 0;
 
-  // Reemplazamos el valor de la tarjeta con la suma real
   $("kpiSaldos").innerHTML = [
     heroCard({ title: "Total PIM", value: "S/ " + fmt(tPim), unit: "", note: "Presupuesto Total", badge: "100%" }),
-    kpiCard({ icon: "fa-wallet", tone: "amber", title: "Total Saldo", value: "S/ " + fmt(tSaldo), unit: "", pct: pctSaldo, barLabel: "Saldo por Ejecutar", foot: "PIM - Certificado" }),
-    kpiCard({ icon: "fa-chart-pie", tone: "green", title: "% Saldo", value: fmt(pctSaldo, 2) + "%", unit: "", pct: pctSaldo, barLabel: "Porcentaje", foot: "Restante" }),
+    kpiCard({ icon: "fa-wallet", tone: "amber", title: "Total Saldo", value: "S/ " + fmt(tSaldo), unit: "", pct: pctSaldo, barLabel: "Saldo por Ejecutar", foot: "PIM - Certificado" })
   ].join("");
 
-  // 4. Gráfico de barras (Top 10 mayor a menor saldo)
   let metMap = {};
   filasFiltradas.forEach(f => { metMap[f.meta] = (metMap[f.meta] || 0) + f.saldo; });
-  const metasOrdenadas = Object.entries(metMap).sort((a, b) => b[1] - a[1]).slice(0, 25);
+  const metasOrdenadas = Object.entries(metMap).sort((a, b) => parseInt(a[0]) - parseInt(b[0]));
 
-  renderGrouped("salMeta", metasOrdenadas.map(x => `Meta ${x[0]}`), [
-    { label: "Saldo (S/)", color: C.gold, data: metasOrdenadas.map(x => x[1]) }
-  ]);
+  $("salMeta").parentElement.innerHTML = `
+    <style>
+      .custom-scroll::-webkit-scrollbar { height: 8px; }
+      .custom-scroll::-webkit-scrollbar-track { background: #F1F5F9; border-radius: 4px; }
+      .custom-scroll::-webkit-scrollbar-thumb { background: #94A3B8; border-radius: 4px; }
+      .custom-scroll::-webkit-scrollbar-thumb:hover { background: #64748B; }
+      .custom-scroll { scrollbar-width: thin; scrollbar-color: #94A3B8 #F1F5F9; }
+    </style>
+    <div class="custom-scroll" style="overflow-x: auto; width: 100%; padding-bottom: 8px;">
+      <div style="min-width: ${Math.max(100, metasOrdenadas.length * 50)}px; height: 400px;">
+        <canvas id="salMetaCanvas"></canvas>
+      </div>
+    </div>
+  `;
 
-    // 5. Tabla con Acordeón (Sin duplicar totales)
+  mount("salMetaCanvas", {
+    type: "bar",
+    data: { 
+      labels: metasOrdenadas.map(x => `Meta ${x[0]}`), 
+      datasets: [{ 
+        label: "Saldo (S/)", 
+        data: metasOrdenadas.map(x => x[1]), 
+        backgroundColor: C.gold,
+        borderRadius: { topLeft: 4, topRight: 4 }, 
+        borderSkipped: false, 
+        maxBarThickness: 35
+      }] 
+    },
+    options: { 
+      responsive: true, maintainAspectRatio: false, 
+      interaction: { mode: 'index', intersect: false },
+      plugins: { legend: { display: false }, tooltip: { enabled: false } },
+      scales: { 
+        x: { grid: { display: false }, ticks: { color: C.dim, maxRotation: 0, autoSkip: false } }, 
+        y: { beginAtZero: true, grid: { color: C.grid }, border: { display: false }, ticks: { color: C.faint, callback: (v) => fmtM(v) } } 
+      } 
+    },
+    plugins: [{
+      id: 'customTooltip',
+      afterEvent(chart, args) {
+        const e = args.event;
+        if (e.type === 'mouseout') { chart.mouseCoords = null; chart.draw(); return; }
+        if (e.type === 'mousemove') {
+          const active = chart.getActiveElements();
+          if (active.length > 0) {
+            chart.mouseCoords = { x: e.x, y: e.y };
+            chart.tooltipData = { title: chart.data.labels[active[0].index], value: chart.data.datasets[0].data[active[0].index] };
+          } else { chart.mouseCoords = null; }
+          chart.draw();
+        }
+      },
+      afterDraw(chart) {
+        if (!chart.mouseCoords || !chart.tooltipData) return;
+        const ctx = chart.ctx;
+        const { x, y } = chart.mouseCoords;
+        let posX = x + 15, posY = y - 50 - 10;
+        if (posX + 160 > chart.width) posX = x - 160 - 15;
+        if (posY < 0) posY = y + 15;
+        ctx.save();
+        ctx.fillStyle = "#FFFFFF"; ctx.strokeStyle = "#E2E8F0"; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.roundRect(posX, posY, 160, 50, 6); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = C.text; ctx.font = "600 12px 'IBM Plex Sans'"; ctx.fillText(chart.tooltipData.title, posX + 10, posY + 20);
+        ctx.fillStyle = C.dim; ctx.font = "500 11px 'IBM Plex Sans'"; ctx.fillText("Saldo: " + fmtM(chart.tooltipData.value), posX + 10, posY + 38);
+        ctx.restore();
+      }
+    }]
+  });
+
   const agrupado = {};
   filasFiltradas.forEach(f => {
     if (!agrupado[f.meta]) agrupado[f.meta] = { pia: 0, pim: 0, cert: 0, cAnual: 0, comp: 0, dev: 0, giro: 0, pago: 0, saldo: 0, clasifs: [] };
@@ -695,7 +767,6 @@ function renderSaldos() {
   const cRow = (label, data, isParent=false, levelId="") => {
     return `
       <tr class="${isParent ? 'row-parent' : 'child ' + levelId}" ${isParent ? `data-target="${levelId}"` : ''} style="${isParent ? 'cursor:pointer; font-weight:600; background:#F8FAFC;' : 'color:#64748B;'}">
-              <tr class="${isParent ? 'row-parent' : 'child ' + levelId}" ${isParent ? `data-target="${levelId}"` : ''} style="${isParent ? 'cursor:pointer; font-weight:600; background:#F8FAFC;' : 'color:#64748B;'}">
         <td style="white-space: normal; word-break: break-word; min-width: 300px;">
           <div style="padding-left: ${isParent ? '10px' : '20px'}; display: flex; align-items: flex-start; gap: 5px;">
             ${isParent ? '<i class="fas fa-plus-square" style="color:#0F172A; width:15px; margin-top: 3px;"></i>' : '<i style="width:15px; display:inline-block;"></i>'}
@@ -715,32 +786,27 @@ function renderSaldos() {
   };
 
   let html = `<div class="tbl-wrap"><table class="tbl"><thead><tr>
-    <th>META2 / Clasificador</th><th class="num">PIA</th><th class="num">PIM</th><th class="num">Cert</th>
+    <th>META2 / CLASIFICADOR</th><th class="num">PIA</th><th class="num">PIM</th><th class="num">Cert</th>
     <th class="num">Comp. Anual</th><th class="num">Compromiso</th><th class="num">Devengado</th>
     <th class="num">Girado</th><th class="num">Pagado</th><th class="num">Saldo</th>
   </tr></thead><tbody>`;
 
-  // Totales para la fila del final (Sumando solo las filas hijas)
   let totalPia = 0, totalPim = 0, totalCert = 0, totalCAnual = 0, totalComp = 0, totalDev = 0, totalGiro = 0, totalPago = 0, totalSaldo = 0;
 
-  Object.keys(agrupado).sort((a,b) => parseInt(a) - parseInt(b)).forEach((metaName, i) => {
+  Object.keys(agrupado).sort((a, b) => parseInt(a) - parseInt(b)).forEach((metaName, i) => {
     const m = agrupado[metaName];
     const metaId = `meta-${i}`;
     
-    // Sumar al total general
     totalPia += m.pia; totalPim += m.pim; totalCert += m.cert; totalCAnual += m.cAnual;
     totalComp += m.comp; totalDev += m.dev; totalGiro += m.giro; totalPago += m.pago; totalSaldo += m.saldo;
 
-    // Fila Padre (Meta)
     html += cRow(`Meta ${metaName}`, m, true, metaId);
 
-    // Filas Hijas (Clasificadores)
     m.clasifs.forEach((c) => {
       html += cRow(c.clasif, c, false, metaId);
     });
   });
 
-  // Fila Total General
   html += `
     <tr style="font-weight:700; background:#F1F5F9; border-top:2px solid #CBD5E1;">
       <td style="padding-left: 10px;">Total general</td>
@@ -758,7 +824,6 @@ function renderSaldos() {
   html += `</tbody></table></div>`;
   $("tablaSaldos").innerHTML = html;
 
-  // 6. Lógica del acordeón
   document.querySelectorAll('#tablaSaldos tr[class*="child"]').forEach(row => {
     row.style.display = 'none';
   });
@@ -791,6 +856,20 @@ function cambiarSeccion(seccion) {
 }
 
 function engancharEventos() {
+
+    if ($("btnFiltrarSaldos")) $("btnFiltrarSaldos").addEventListener("click", (e) => {
+    e.currentTarget.classList.toggle("active");
+    // Un pequeño estilo para que se vea que está activo
+    if (e.currentTarget.classList.contains("active")) {
+      e.currentTarget.style.backgroundColor = "#0F172A";
+      e.currentTarget.style.color = "#FFFFFF";
+    } else {
+      e.currentTarget.style.backgroundColor = "";
+      e.currentTarget.style.color = "";
+    }
+    renderSaldos();
+  });
+
   if (listenersReady) return;
   listenersReady = true;
 
@@ -852,6 +931,14 @@ function engancharEventos() {
   if ($("sFilterOfiSeg")) $("sFilterOfiSeg").addEventListener("change", renderSeguimiento);
   if ($("sSearchOfiSeg")) $("sSearchOfiSeg").addEventListener("input", renderSeguimiento);
 
+  if ($("salFiltroMeta")) $("salFiltroMeta").addEventListener("change", renderSaldos);
+  if ($("salFiltroGen")) $("salFiltroGen").addEventListener("change", renderSaldos);
+  if ($("salClear")) $("salClear").addEventListener("click", () => {
+    if ($("salFiltroMeta")) $("salFiltroMeta").value = "";
+    if ($("salFiltroGen")) $("salFiltroGen").value = "";
+    renderSaldos();
+  });
+
   document.querySelectorAll(".js-refresh").forEach((b) =>
     b.addEventListener("click", async () => {
       document.querySelectorAll(".js-refresh").forEach((x) => { x.disabled = true; x.classList.add("is-loading"); });
@@ -859,14 +946,6 @@ function engancharEventos() {
       document.querySelectorAll(".js-refresh").forEach((x) => { x.disabled = false; x.classList.remove("is-loading"); });
     })
   );
-    // Eventos para el filtro de Saldos
-  if ($("salFiltroMeta")) $("salFiltroMeta").addEventListener("change", renderSaldos);
-  if ($("salFiltroGen")) $("salFiltroGen").addEventListener("change", renderSaldos); // <-- Agrega esto
-  if ($("salClear")) $("salClear").addEventListener("click", () => {
-    if ($("salFiltroMeta")) $("salFiltroMeta").value = "";
-    if ($("salFiltroGen")) $("salFiltroGen").value = ""; // <-- Agrega esto
-    renderSaldos();
-  });
 }
 
 async function cargarTodo() {

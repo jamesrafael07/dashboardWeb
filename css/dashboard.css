@@ -226,26 +226,3 @@ button { font-family: inherit; color: inherit; }
     .live i, .loading-spinner, .is-loading i { animation: none; }
 }
 
-/* Estilos para el scroll horizontal del gráfico */
-#salMeta div {
-    scrollbar-width: thin;
-    scrollbar-color: #94A3B8 #F1F5F9;
-}
-
-#salMeta div::-webkit-scrollbar {
-    height: 8px;
-}
-
-#salMeta div::-webkit-scrollbar-track {
-    background: #F1F5F9;
-    border-radius: 4px;
-}
-
-#salMeta div::-webkit-scrollbar-thumb {
-    background: #94A3B8;
-    border-radius: 4px;
-}
-
-#salMeta div::-webkit-scrollbar-thumb:hover {
-    background: #64748B;
-}

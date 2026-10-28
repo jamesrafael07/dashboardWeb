@@ -19,7 +19,7 @@ Chart.defaults.animation.duration = 450;
 Chart.defaults.plugins.datalabels.display = false;
 Chart.defaults.plugins.legend.display = false;
 
-const state = { data: null, dataSaldos: null };
+const state = { data: null, dataSaldos: null, filtro7Activo: false };
 const charts = {};
 let listenersReady = false;
 
@@ -187,8 +187,7 @@ function construirLayoutInterno() {
     `<article class="card span-12"><div class="card-head" style="display:flex; flex-direction: column; align-items: flex-start; gap: 12px; margin-bottom:14px;"><div><h3>Seguimiento Detallado (TD-PIM)</h3><p>Haz clic en los signos (+) para desplegar.</p></div><div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; width: 100%;"><select id="sFilterDepSeg" style="min-width:180px; border:1px solid #E2E8F0; padding:6px 10px; border-radius:6px; font-size:12px; color:#1E293B; outline:none;"><option value="">Todas las Deps</option></select><input type="text" id="sSearchDepSeg" placeholder="Buscar Dep..." style="width:130px; border:1px solid #E2E8F0; padding:6px 10px; border-radius:6px; font-size:12px; color:#1E293B; outline:none;"><select id="sFilterOfiSeg" style="min-width:180px; border:1px solid #E2E8F0; padding:6px 10px; border-radius:6px; font-size:12px; color:#1E293B; outline:none;"><option value="">Todas las Ofis</option></select><input type="text" id="sSearchOfiSeg" placeholder="Buscar Ofi..." style="width:130px; border:1px solid #E2E8F0; padding:6px 10px; border-radius:6px; font-size:12px; color:#1E293B; outline:none;"></div></div><div id="sTabla" class="mini-table"></div></article>`
   ].join("");
 
-  // SALDOS
-  // SALDOS
+    // SALDOS
   const divFiltrosSaldos = $("filtersSaldos");
   if (divFiltrosSaldos) {
     divFiltrosSaldos.innerHTML = `
@@ -203,7 +202,7 @@ function construirLayoutInterno() {
   }
 
   $("gridSaldos").innerHTML = [
-    `<article class="card span-12"><div class="card-head"><h3>Saldo por Meta</h3><p>Distribución por META2</p></div><div id="salMeta" class="plot" style="height: 400px;"></div></article>`
+    `<article class="card span-12"><div class="card-head"><h3>Saldo por Meta</h3><p>Distribución por META2</p></div><div id="salMetaContainer" style="overflow-x: auto; width: 100%; padding-bottom: 8px;"><div id="salMeta" style="min-width: 100%; height: 400px;"></div></div></article>`
   ].join("");
 }
 
@@ -632,7 +631,7 @@ function renderSeguimiento() {
 }
 
 function renderSaldos() {
-  if (!state.dataSaldos) { $("kpiSaldos").innerHTML = ""; $("gridSaldos").innerHTML = vacioMensaje(12); return; }
+  if (!state.dataSaldos) { $("kpiSaldos").innerHTML = ""; $("salMeta").innerHTML = ""; return; }
   const d = state.dataSaldos;
   
   const selMeta = $("salFiltroMeta");
@@ -641,11 +640,10 @@ function renderSaldos() {
   const filtroMeta = selMeta ? selMeta.value : "";
   const filtroGen = selGen ? selGen.value : "";
 
-  // 1. Llenar el segmentador de Meta (solo las disponibles según el GEN elegido)
+  // 1. Llenar el segmentador de Meta
   if (selMeta) {
     const metasDisponibles = [...new Set(d.filas.filter(f => !filtroGen || f.genGasto === filtroGen).map(f => f.meta))];
     metasDisponibles.sort((a, b) => parseInt(a) - parseInt(b));
-    
     const currentMeta = selMeta.value;
     selMeta.innerHTML = `<option value="">Todas las Metas</option>`;
     metasDisponibles.forEach(m => {
@@ -654,11 +652,10 @@ function renderSaldos() {
     if (metasDisponibles.includes(currentMeta)) selMeta.value = currentMeta;
   }
 
-  // 2. Llenar el segmentador de GEN (solo los disponibles según la Meta elegida)
+  // 2. Llenar el segmentador de GEN
   if (selGen) {
     const gensDisponibles = [...new Set(d.filas.filter(f => !filtroMeta || f.meta === filtroMeta).map(f => f.genGasto))].filter(Boolean);
     gensDisponibles.sort();
-    
     const currentGen = selGen.value;
     selGen.innerHTML = `<option value="">Todos los GEN</option>`;
     gensDisponibles.forEach(g => {
@@ -667,13 +664,18 @@ function renderSaldos() {
     if (gensDisponibles.includes(currentGen)) selGen.value = currentGen;
   }
 
-  // 3. Filtrar las filas finales para mostrar en los gráficos y tabla
+  // 3. Filtrar las filas (Aplica botón, meta y gen)
+  const isFiltrarActivo = state.filtro7Activo;
+  const metasPermitidas = ["31", "32", "35", "40", "41", "26", "28", "30"];
+
   const filasFiltradas = d.filas.filter(f => {
+    if (isFiltrarActivo && !metasPermitidas.includes(f.meta)) return false;
     if (filtroMeta && f.meta !== filtroMeta) return false;
     if (filtroGen && f.genGasto !== filtroGen) return false;
     return true;
   });
 
+  // 4. KPIs
   let tPim = 0, tSaldo = 0;
   filasFiltradas.forEach(f => { tPim += f.pim; tSaldo += f.saldo; });
   const pctSaldo = tPim ? (tSaldo / tPim) * 100 : 0;
@@ -683,36 +685,22 @@ function renderSaldos() {
     kpiCard({ icon: "fa-wallet", tone: "amber", title: "Total Saldo", value: "S/ " + fmt(tSaldo), unit: "", pct: pctSaldo, barLabel: "Saldo por Ejecutar", foot: "PIM - Certificado" })
   ].join("");
 
+  // 5. Gráfico
   let metMap = {};
   filasFiltradas.forEach(f => { metMap[f.meta] = (metMap[f.meta] || 0) + f.saldo; });
   const metasOrdenadas = Object.entries(metMap).sort((a, b) => parseInt(a[0]) - parseInt(b[0]));
 
-  $("salMeta").parentElement.innerHTML = `
-    <style>
-      .custom-scroll::-webkit-scrollbar { height: 8px; }
-      .custom-scroll::-webkit-scrollbar-track { background: #F1F5F9; border-radius: 4px; }
-      .custom-scroll::-webkit-scrollbar-thumb { background: #94A3B8; border-radius: 4px; }
-      .custom-scroll::-webkit-scrollbar-thumb:hover { background: #64748B; }
-      .custom-scroll { scrollbar-width: thin; scrollbar-color: #94A3B8 #F1F5F9; }
-    </style>
-    <div class="custom-scroll" style="overflow-x: auto; width: 100%; padding-bottom: 8px;">
-      <div style="min-width: ${Math.max(100, metasOrdenadas.length * 50)}px; height: 400px;">
-        <canvas id="salMetaCanvas"></canvas>
-      </div>
-    </div>
-  `;
+  // El contenedor se ajusta dinámicamente al ancho de las barras
+  $("salMeta").style.minWidth = `${Math.max(100, metasOrdenadas.length * 50)}px`;
+  $("salMeta").innerHTML = `<canvas id="salMetaCanvas"></canvas>`;
 
   mount("salMetaCanvas", {
     type: "bar",
     data: { 
       labels: metasOrdenadas.map(x => `Meta ${x[0]}`), 
       datasets: [{ 
-        label: "Saldo (S/)", 
-        data: metasOrdenadas.map(x => x[1]), 
-        backgroundColor: C.gold,
-        borderRadius: { topLeft: 4, topRight: 4 }, 
-        borderSkipped: false, 
-        maxBarThickness: 35
+        label: "Saldo (S/)", data: metasOrdenadas.map(x => x[1]), backgroundColor: C.gold,
+        borderRadius: { topLeft: 4, topRight: 4 }, borderSkipped: false, maxBarThickness: 35
       }] 
     },
     options: { 
@@ -755,6 +743,7 @@ function renderSaldos() {
     }]
   });
 
+  // 6. Tabla
   const agrupado = {};
   filasFiltradas.forEach(f => {
     if (!agrupado[f.meta]) agrupado[f.meta] = { pia: 0, pim: 0, cert: 0, cAnual: 0, comp: 0, dev: 0, giro: 0, pago: 0, saldo: 0, clasifs: [] };
@@ -856,20 +845,6 @@ function cambiarSeccion(seccion) {
 }
 
 function engancharEventos() {
-
-    if ($("btnFiltrarSaldos")) $("btnFiltrarSaldos").addEventListener("click", (e) => {
-    e.currentTarget.classList.toggle("active");
-    // Un pequeño estilo para que se vea que está activo
-    if (e.currentTarget.classList.contains("active")) {
-      e.currentTarget.style.backgroundColor = "#0F172A";
-      e.currentTarget.style.color = "#FFFFFF";
-    } else {
-      e.currentTarget.style.backgroundColor = "";
-      e.currentTarget.style.color = "";
-    }
-    renderSaldos();
-  });
-
   if (listenersReady) return;
   listenersReady = true;
 
@@ -931,11 +906,25 @@ function engancharEventos() {
   if ($("sFilterOfiSeg")) $("sFilterOfiSeg").addEventListener("change", renderSeguimiento);
   if ($("sSearchOfiSeg")) $("sSearchOfiSeg").addEventListener("input", renderSeguimiento);
 
+  // EVENTOS DE SALDOS
   if ($("salFiltroMeta")) $("salFiltroMeta").addEventListener("change", renderSaldos);
   if ($("salFiltroGen")) $("salFiltroGen").addEventListener("change", renderSaldos);
   if ($("salClear")) $("salClear").addEventListener("click", () => {
     if ($("salFiltroMeta")) $("salFiltroMeta").value = "";
     if ($("salFiltroGen")) $("salFiltroGen").value = "";
+    renderSaldos();
+  });
+
+  if ($("btnFiltrarSaldos")) $("btnFiltrarSaldos").addEventListener("click", (e) => {
+    state.filtro7Activo = !state.filtro7Activo;
+    e.currentTarget.classList.toggle("active", state.filtro7Activo);
+    if (state.filtro7Activo) {
+      e.currentTarget.style.backgroundColor = "#0F172A";
+      e.currentTarget.style.color = "#FFFFFF";
+    } else {
+      e.currentTarget.style.backgroundColor = "";
+      e.currentTarget.style.color = "";
+    }
     renderSaldos();
   });
 
